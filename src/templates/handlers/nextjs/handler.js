@@ -388,7 +388,11 @@ async function handleRequest(request, env, context) {
     let found = false;
     for (const matcher of matchers) {
       if (matcher.regexp) {
-        if (pathname.match(new RegExp(matcher?.regexp))) {
+        const regexp = new RegExp(matcher?.regexp);
+        if (
+          pathname.match(regexp) ||
+          `${pathname}/page`.replace("//page", "/page").match(regexp)
+        ) {
           found = true;
           break;
         }

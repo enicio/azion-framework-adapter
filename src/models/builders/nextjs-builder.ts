@@ -11,6 +11,8 @@ import { Builder } from "./builder";
 import { ErrorCode } from '../../errors';
 import { VercelService } from "./services/vercel-service";
 import { ManifestBuilderService } from "./services/manifest-builder-service";
+// import { nodeBuiltInModulesPlugin } from "../../entrypoint/esbuild-plugins";
+import { polyfillNode } from "esbuild-plugin-polyfill-node";
 
 interface HydratedEntry {
     matchers: string,
@@ -60,11 +62,27 @@ class NextjsBuilder extends Builder {
                 }
 
                 for (const entry of this.functionsEntries) {
-                    if (`pages/${name}` === entry?.name) {
+                    if (
+                        `pages/${name}` === entry?.name ||
+                        `app${name !== "index" ? `/${name}` : ""}/page` === entry?.name) {
                         this.hydratedFunctions.set(name, { matchers: entry.matchers, filepath });
                     }
                 }
             }
+
+            const rscFunctions = [...this.functionsMap.keys()].filter((name) =>
+                name.endsWith(".rsc")
+            );
+
+            if (
+                this.hydratedMiddleware.size + this.hydratedFunctions.size !==
+                this.functionsMap.size - rscFunctions.length
+            ) {
+                console.error(
+                    "⚡️ ERROR: Could not map all functions to an entry in the manifest."
+                );
+            }
+
         } catch (error:any) {
             throw new MiddlewareManifestHandlerError(error.message);
         }
@@ -93,32 +111,37 @@ class NextjsBuilder extends Builder {
         `;
     }
 
-    buildWorker(params: any): any {
+    async buildWorker(params: any): Promise<any> {
         console.log("Building azion worker ...")
 
-        try {
-            this.esbuild.buildSync({
-                entryPoints: [join(this.dirname, "../../templates/handlers/nextjs/handler.js")],
-                bundle: true,
-                inject: [
-                    params.functionsFile,
-                    join(this.dirname, "../../templates/handlers/nextjs/globals.js"),
-                ],
-                minify: true,
-                target: "es2021",
-                platform: "neutral",
-                define: {
-                    __CONFIG__: JSON.stringify(params.config),
-                    __VERSION_ID__: `'${params.versionId}'`,
-                    __ASSETS_MANIFEST__: JSON.stringify(params.assetsManifest)
-                },
-                outfile: "./out/worker.js",
-            });
-
+        // try {
+        await esbuild.build({
+            entryPoints: [join(this.dirname, "../../templates/handlers/nextjs/handler.js")],
+            bundle: true,
+            inject: [
+                params.functionsFile,
+                join(this.dirname, "../../templates/handlers/nextjs/globals.js"),
+            ],
+            minify: false,
+            target: "es2021",
+            platform: "neutral",
+            define: {
+                __CONFIG__: JSON.stringify(params.config),
+                __VERSION_ID__: `'${params.versionId}'`,
+                __ASSETS_MANIFEST__: JSON.stringify(params.assetsManifest)
+            },
+            plugins: [polyfillNode()],
+            outfile: "./out/worker.js",
+        }).catch(() => {
+            throw new Error("Failed to build worker.");
+        }).finally(() => {
             console.log("Generated './out/worker.js'.");
-        } catch (error: any) {
-            throw new Error(error.message);
-        }
+        });
+
+        // console.log("Generated './out/worker.js'.");
+        // } catch (error: any) {
+        //     throw new Error(error.message);
+        // }
     }
 
     async build(params: any): Promise<ErrorCode> {
@@ -165,7 +188,7 @@ class NextjsBuilder extends Builder {
                 config,
                 assetsManifest
             };
-            this.buildWorker(buildParams);
+            await this.buildWorker(buildParams);
             return ErrorCode.Ok;
         } catch (error:any) {
             console.log("Error in nextjs build process");

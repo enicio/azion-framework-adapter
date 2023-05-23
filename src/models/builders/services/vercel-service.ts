@@ -78,6 +78,8 @@ export class VercelService {
                 valid: vcConfigObjects.filter(vcConfig =>  this.isVcConfigValid(vcConfig.content)),
             }
 
+            console.log("Functions detected: ", vcObjects.valid);
+
             if (vcObjects.invalid.length > 0) {
                 const invalidFunctionsList = vcObjects.invalid
                     .filter( invalidFunction => !invalidFunction.path.includes('_next/data'))
