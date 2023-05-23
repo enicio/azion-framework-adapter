@@ -7,9 +7,11 @@ export const nodeBuiltInModulesPlugin=  {
             // this plugin converts `require("node:*")` calls, those are the only ones that
             // need updating (esm imports to "node:*" are totally valid), so here we tag with the
             // node-buffer namespace only imports that are require calls
+            console.log("\n\n\n####### On resolve esbuild")
+            console.log(kind, path)
             return kind === 'require-call'
                 ? {
-                    path,
+                    path: path.replace("node:", ""),
                     namespace: 'node-built-in-modules',
                 }
                 : undefined;
@@ -20,6 +22,7 @@ export const nodeBuiltInModulesPlugin=  {
         build.onLoad(
             { filter: /.*/, namespace: 'node-built-in-modules' },
             ({ path }: any) => {
+                console.log("\n\n\n####### On Load esbuild")
                 return {
                     contents: `export * from '${path}'`,
                     loader: 'js',

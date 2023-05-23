@@ -12,7 +12,9 @@ import { ErrorCode } from '../../errors';
 import { VercelService } from "./services/vercel-service";
 import { ManifestBuilderService } from "./services/manifest-builder-service";
 // import { nodeBuiltInModulesPlugin } from "../../entrypoint/esbuild-plugins";
-import { polyfillNode } from "esbuild-plugin-polyfill-node";
+// import { polyfillNode } from "esbuild-plugin-polyfill-node";
+import { nodeBuiltInModulesPlugin } from "../../entrypoint/esbuild-plugins";
+import { NodeModulesPolyfillPlugin } from '@esbuild-plugins/node-modules-polyfill'
 
 interface HydratedEntry {
     matchers: string,
@@ -130,7 +132,7 @@ class NextjsBuilder extends Builder {
                 __VERSION_ID__: `'${params.versionId}'`,
                 __ASSETS_MANIFEST__: JSON.stringify(params.assetsManifest)
             },
-            plugins: [polyfillNode()],
+            plugins: [nodeBuiltInModulesPlugin, NodeModulesPolyfillPlugin()],
             outfile: "./out/worker.js",
         }).catch(() => {
             throw new Error("Failed to build worker.");
