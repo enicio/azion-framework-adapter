@@ -143,11 +143,14 @@ function applyPrerenderedRoutes(
     vercelOutput: Map<string, BuildOutputItem>
 ): void {
     prerenderedRoutes.forEach(({ headers, overrides }, path) => {
-        vercelOutput.set(path, {
-            type: 'override',
-            path,
-            headers,
-        });
+        if(path !== '/favicon.ico') {
+            vercelOutput.set(path, {
+                type: 'override',
+                path,
+                headers,
+            });
+        }
+
 
         overrides?.forEach(overridenPath => {
             vercelOutput.set(overridenPath, {
@@ -156,6 +159,7 @@ function applyPrerenderedRoutes(
                 headers,
             });
         });
+
     });
 }
 
